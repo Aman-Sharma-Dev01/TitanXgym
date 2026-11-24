@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { Download, Plus, Printer, Search, X } from 'lucide-react';
 import { apiFetch, formatDateIN, formatINR, getTodayISTClient } from '../../lib/api';
 import type { PaymentRecord, SubscriptionRecord } from '../../types/gym';
@@ -98,28 +99,112 @@ export const PaymentsPage: React.FC = () => {
     }
   };
 
-  const downloadReceiptTxt = (p: PaymentRecord) => {
-    const text = [
-      "TITAN X – Faridabad's Home of Strength",
-      '========================================',
-      `Receipt Number : ${p.receipt_number}`,
-      `Payment Date   : ${formatDateIN(p.payment_date)}`,
-      `Member         : ${p.full_name} (${p.member_id})`,
-      `Mobile         : +91 ${p.mobile}`,
-      `Plan           : ${p.plan_name}`,
-      `Amount Paid    : ${formatINR(p.amount)}`,
-      `Payment Method : ${p.payment_method}`,
-      `Reference ID   : ${p.reference_id || 'N/A'}`,
-      '========================================',
-      'Contact: +91 9217258251',
-    ].join('\n');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${p.receipt_number}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const downloadReceiptPdf = (p: PaymentRecord) => {
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const amount = formatINR(p.amount).replace('₹', 'INR ');
+
+    pdf.setFillColor(18, 18, 18);
+    pdf.rect(0, 0, pageWidth, 48, 'F');
+    pdf.setFillColor(239, 23, 23);
+    pdf.rect(0, 48, pageWidth, 3, 'F');
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(26);
+    pdf.text('TITAN', 14, 24);
+    pdf.setTextColor(239, 23, 23);
+    pdf.text('X', 49, 24);
+    pdf.setTextColor(210, 210, 210);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text("Faridabad's Home of Strength", 14, 32);
+    pdf.text('Powerbuilding Gym', 14, 38);
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(20);
+    pdf.text('FEE RECEIPT', pageWidth - 14, 25, { align: 'right' });
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(220, 220, 220);
+    pdf.text(`Receipt No: ${p.receipt_number}`, pageWidth - 14, 34, { align: 'right' });
+    pdf.text(`Payment Date: ${formatDateIN(p.payment_date)}`, pageWidth - 14, 40, { align: 'right' });
+
+    pdf.setTextColor(20, 20, 20);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(11);
+    pdf.text('MEMBER DETAILS', 14, 62);
+    pdf.setDrawColor(220, 220, 220);
+    pdf.line(14, 66, pageWidth - 14, 66);
+
+    const labelX = 14;
+    const valueX = 58;
+    pdf.setFontSize(10);
+    const memberRows: Array<[string, string]> = [
+      ['Member Name', p.full_name],
+      ['Member ID', p.member_id],
+      ['Mobile', p.mobile ? `+91 ${p.mobile}` : 'N/A'],
+    ];
+    memberRows.forEach(([label, value], index) => {
+      const y = 76 + index * 9;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(110, 110, 110);
+      pdf.text(label, labelX, y);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(25, 25, 25);
+      pdf.text(value || 'N/A', valueX, y);
+    });
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(20, 20, 20);
+    pdf.setFontSize(11);
+    pdf.text('PAYMENT DETAILS', 14, 108);
+    pdf.line(14, 112, pageWidth - 14, 112);
+
+    pdf.setFontSize(10);
+    const paymentRows: Array<[string, string]> = [
+      ['Membership Plan', p.plan_name || 'N/A'],
+      ['Payment Method', p.payment_method],
+      ['Reference / UTR', p.reference_id || 'N/A'],
+      ['Amount Received', amount],
+    ];
+    paymentRows.forEach(([label, value], index) => {
+      const y = 122 + index * 11;
+      pdf.setDrawColor(235, 235, 235);
+      pdf.line(14, y + 3, pageWidth - 14, y + 3);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(110, 110, 110);
+      pdf.text(label, labelX, y);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(index === 3 ? 239 : 25, index === 3 ? 23 : 25, index === 3 ? 23 : 25);
+      pdf.text(value, pageWidth - 14, y, { align: 'right' });
+    });
+
+    pdf.setFillColor(248, 248, 248);
+    pdf.roundedRect(14, 172, pageWidth - 28, 24, 3, 3, 'F');
+    pdf.setTextColor(50, 50, 50);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(13);
+    pdf.text('TOTAL PAID', 22, 187);
+    pdf.setTextColor(239, 23, 23);
+    pdf.setFontSize(16);
+    pdf.text(amount, pageWidth - 22, 187, { align: 'right' });
+
+    pdf.setDrawColor(220, 220, 220);
+    pdf.line(14, 236, pageWidth - 14, 236);
+    pdf.setTextColor(100, 100, 100);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.text('Thank you for choosing TITAN X.', 14, 245);
+    pdf.text('Contact: +91 9217258251', 14, 251);
+    pdf.text("Faridabad's Home of Strength", pageWidth - 14, 245, { align: 'right' });
+    pdf.text('Mon-Sat 5 AM-11 PM | Sun 2 PM-11 PM', pageWidth - 14, 251, { align: 'right' });
+    pdf.setTextColor(160, 160, 160);
+    pdf.setFontSize(8);
+    pdf.text('This is a computer-generated receipt.', pageWidth / 2, 264, { align: 'center' });
+
+    pdf.save(`${p.receipt_number}.pdf`);
   };
 
   return (
@@ -433,7 +518,7 @@ export const PaymentsPage: React.FC = () => {
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => downloadReceiptTxt(receiptTarget)}
+                onClick={() => downloadReceiptPdf(receiptTarget)}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-white/15 py-2.5 text-xs font-semibold text-white hover:border-white/35"
               >
                 <Download className="h-3.5 w-3.5" />
