@@ -2,7 +2,8 @@ let inMemoryToken: string | null = null;
 
 function resolveApiUrl(url: string): string {
   if (!url.startsWith('/')) return url;
-  const apiBaseUrl = import.meta.env.VITE_API_URL?.trim();
+  const apiBaseUrl =
+    import.meta.env.VITE_API_URL?.trim() || 'https://titanxgym.onrender.com';
   return apiBaseUrl ? `${apiBaseUrl.replace(/\/$/, '')}${url}` : url;
 }
 
