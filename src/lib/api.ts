@@ -1,5 +1,11 @@
 let inMemoryToken: string | null = null;
 
+function resolveApiUrl(url: string): string {
+  if (!url.startsWith('/')) return url;
+  const apiBaseUrl = import.meta.env.VITE_API_URL?.trim();
+  return apiBaseUrl ? `${apiBaseUrl.replace(/\/$/, '')}${url}` : url;
+}
+
 export function setInMemoryToken(token: string | null): void {
   inMemoryToken = token;
 }
@@ -14,7 +20,7 @@ export async function apiFetch<T>(url: string, options: RequestInit = {}): Promi
     headers.set('Authorization', `Bearer ${inMemoryToken}`);
   }
 
-  const res = await fetch(url, {
+  const res = await fetch(resolveApiUrl(url), {
     ...options,
     headers,
     credentials: 'include',

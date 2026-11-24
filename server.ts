@@ -14,6 +14,28 @@ async function startServer(): Promise<void> {
 
   const app = express();
   app.set('trust proxy', 1);
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      process.env.APP_URL?.trim(),
+      process.env.FRONTEND_URL?.trim(),
+      process.env.CORS_ORIGIN?.trim(),
+    ].filter((value): value is string => Boolean(value));
+    const allowed = !origin || allowedOrigins.includes(origin);
+
+    if (origin && allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(allowed ? 204 : 403);
+      return;
+    }
+    next();
+  });
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: true }));
 
