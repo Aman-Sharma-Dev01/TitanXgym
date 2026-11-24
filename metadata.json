@@ -1,0 +1,6 @@
+{
+  "name": "TITAN X – Gym Membership & Subscription Management System",
+  "description": "Powerbuilding gym website and complete membership, subscription, payment, attendance, and automated WhatsApp/Email management system for TITAN X, Faridabad.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
